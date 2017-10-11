@@ -1,6 +1,7 @@
 package com.github.deividasp.kchip8.emulator
 
 import com.github.deividasp.kchip8.extension.getResourcePath
+import com.github.deividasp.kchip8.extension.load
 import kotlin.test.assertEquals
 import org.junit.Test
 
@@ -28,6 +29,16 @@ class VirtualMachineTests {
         vm.loadProgram(this::class.getResourcePath(fileName))
 
         expectedValues.forEach { assertEquals(it, vm.memory.get(), "Memory value mismatch") }
+    }
+
+    @Test
+    fun `load instructions`() {
+        val instructions = shortArrayOf(0x1012, 0x2123, 0x3234)
+
+        val vm = VirtualMachine()
+        vm.load(*instructions)
+
+        instructions.forEach { assertEquals(it, vm.memory.short, "Memory value mismatch") }
     }
 
 }
