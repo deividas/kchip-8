@@ -10,6 +10,7 @@ import java.nio.file.Paths
 class VirtualMachine {
 
     val memory = ByteBuffer.allocate(MEMORY_SIZE)!!
+    val dataRegisters = IntArray(DATA_REGISTERS)
 
     fun loadProgram(data: ByteArray) {
         reset()
@@ -30,6 +31,7 @@ class VirtualMachine {
     }
 
     companion object {
+        const val DATA_REGISTERS = 16
         const val MEMORY_SIZE = 0x1000
         const val PROGRAM_OFFSET = 0x200
     }
