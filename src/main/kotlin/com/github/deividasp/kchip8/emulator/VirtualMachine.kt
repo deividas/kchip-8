@@ -9,8 +9,11 @@ import java.nio.file.Paths
  */
 class VirtualMachine {
 
-    val memory = ByteBuffer.allocate(MEMORY_SIZE)!!
+    val screen = Screen()
     val dataRegisters = IntArray(DATA_REGISTERS)
+    val memory = ByteBuffer.allocate(MEMORY_SIZE)!!
+
+    var addressRegister = 0
 
     fun loadProgram(data: ByteArray) {
         reset()
@@ -27,7 +30,10 @@ class VirtualMachine {
     }
 
     private fun reset() {
+        screen.clear()
         memory.clear()
+        addressRegister = 0
+        dataRegisters.forEachIndexed { i, _ -> dataRegisters[i] = 0 }
     }
 
     companion object {

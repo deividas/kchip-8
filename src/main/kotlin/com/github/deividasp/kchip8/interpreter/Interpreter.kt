@@ -1,11 +1,15 @@
 package com.github.deividasp.kchip8.interpreter
 
+import com.github.deividasp.kchip8.emulator.Screen
 import com.github.deividasp.kchip8.emulator.VirtualMachine
+import java.util.*
 
 /**
  * @author Deividas Popelskis <deividas.popelskis@gmail.com>
  */
 class Interpreter(private val virtualMachine: VirtualMachine) {
+
+    var random = Random()
 
     fun fetchAndExecuteInstruction() {
         val instruction = virtualMachine.memory.short.toInt().and(0xFFFF)
@@ -138,6 +142,50 @@ class Interpreter(private val virtualMachine: VirtualMachine) {
 
                 if (virtualMachine.dataRegisters[index1] != virtualMachine.dataRegisters[index2])
                     virtualMachine.memory.short // skip next instruction
+            }
+
+            0xA -> { // Address register value assign
+                virtualMachine.addressRegister = operand
+            }
+
+            0xB -> { // Memory position jump
+                virtualMachine.memory.position(operand + virtualMachine.dataRegisters[0])
+            }
+
+            0xC -> { // Data register value assign (result of bitwise AND operation on a random number)
+                val index = operand.and(0x0F00).shr(8)
+                val value = operand.and(0x00FF)
+
+                virtualMachine.dataRegisters[index] = value.and(random.nextInt(256))
+            }
+
+            0xD -> { // Sprite drawing and collision flag assign
+                val index1 = operand.and(0x0F00).shr(8)
+                val index2 = operand.and(0x00F0).shr(4)
+                val height = operand.and(0x000F)
+
+                val baseX = virtualMachine.dataRegisters[index1]
+                val baseY = virtualMachine.dataRegisters[index2]
+
+                virtualMachine.dataRegisters[0xF] = 0
+
+                (0 until height).forEach { yOffset ->
+                    val y = baseY + yOffset
+                    val pixels = virtualMachine.memory[virtualMachine.addressRegister + yOffset].toInt()
+
+                    (0 until Screen.SPRITE_WIDTH).forEach { xOffset ->
+                        val x = baseX + xOffset
+                        val pixelActive = pixels.and(0x80.shr(xOffset)) > 0
+
+                        if (!pixelActive)
+                            return@forEach
+
+                        if (virtualMachine.screen.isPixelActive(x, y))
+                            virtualMachine.dataRegisters[0xF] = 1
+
+                        virtualMachine.screen.setPixelActive(x, y, !virtualMachine.screen.isPixelActive(x, y))
+                    }
+                }
             }
         }
     }
