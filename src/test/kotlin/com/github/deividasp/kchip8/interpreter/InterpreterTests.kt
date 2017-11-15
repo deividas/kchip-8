@@ -3,6 +3,7 @@ package com.github.deividasp.kchip8.interpreter
 import com.github.deividasp.kchip8.emulator.Screen
 import com.github.deividasp.kchip8.emulator.VirtualMachine
 import com.github.deividasp.kchip8.extension.load
+import com.github.deividasp.kchip8.extension.setPressedKey
 import org.junit.Before
 import org.junit.Test
 import org.mockito.ArgumentMatchers
@@ -27,6 +28,31 @@ class InterpreterTests {
     }
 
     @Test
+    fun `fetch and execute instruction 0x0 - type 0xE0`() {
+        val instruction = 0x00E0
+        val activePixelCoordinates = Pair(0, 0)
+        val pixelExpectedActive = false
+
+        vm.load(instruction.toShort())
+        vm.screen.setPixelActive(activePixelCoordinates.first, activePixelCoordinates.second, true)
+        interpreter.fetchAndExecuteInstruction()
+
+        assertEquals(pixelExpectedActive, vm.screen.isPixelActive(activePixelCoordinates.first, activePixelCoordinates.second), "Pixel is active")
+    }
+
+    @Test
+    fun `fetch and execute instruction 0x0 - type 0xEE`() {
+        val instruction = 0x00EE
+        val position = 0x0FEF
+
+        vm.load(instruction.toShort())
+        vm.stack.push(position)
+        interpreter.fetchAndExecuteInstruction()
+
+        assertEquals(position, vm.memory.position())
+    }
+
+    @Test
     fun `fetch and execute instruction 0x1`() {
         val instruction = 0x1234
         val expectedPosition = instruction.and(0x0FFF)
@@ -35,6 +61,18 @@ class InterpreterTests {
         interpreter.fetchAndExecuteInstruction()
 
         assertEquals(expectedPosition, vm.memory.position(), "Incorrect memory position")
+    }
+
+    @Test
+    fun `fetch and execute instruction 0x2`() {
+        val instruction = 0x2345
+        val expectedPosition = instruction.and(0x0FFF)
+
+        vm.load(instruction.toShort())
+        interpreter.fetchAndExecuteInstruction()
+
+        assertEquals(expectedPosition, vm.memory.position(), "Incorrect memory position")
+        assertEquals(VirtualMachine.PROGRAM_OFFSET + 2, vm.stack.peek(), "Incorrect stack value")
     }
 
     @Test
@@ -506,8 +544,192 @@ class InterpreterTests {
                 val y = baseY + yOffset
                 val expectedActive = pixels[yOffset].and(0x80.shr(xOffset)) > 0 && x != baseX && y != baseY
 
-                assertEquals(expectedActive, vm.screen.isPixelActive(x, y) && x != baseX && y != baseY)
+                assertEquals(expectedActive, vm.screen.isPixelActive(x, y) && x != baseX && y != baseY, "Incorrect pixel state at [x: $x, y: $y]")
             }
+        }
+    }
+
+    @Test
+    fun `fetch and execute instruction 0xE - type 0x9E (key is not pressed)`() {
+        val instruction = 0xE19E
+        val expectedPosition = VirtualMachine.PROGRAM_OFFSET + 2
+
+        vm.load(instruction.toShort())
+        interpreter.fetchAndExecuteInstruction()
+
+        assertEquals(expectedPosition, vm.memory.position(), "Incorrect memory position")
+    }
+
+    @Test
+    fun `fetch and execute instruction 0xE - type 0x9E (key is pressed)`() {
+        val instruction = 0xE19E
+        val registerIndex = instruction.and(0x0F00).shr(8)
+        val key = 0x5
+        val expectedPosition = VirtualMachine.PROGRAM_OFFSET + 4
+
+        vm.load(instruction.toShort())
+        vm.dataRegisters[registerIndex] = key
+        vm.input.setPressedKey(key)
+        interpreter.fetchAndExecuteInstruction()
+
+        assertEquals(expectedPosition, vm.memory.position(), "Incorrect memory position")
+    }
+
+    @Test
+    fun `fetch and execute instruction 0xE - type 0xA1 (key is pressed)`() {
+        val instruction = 0xE1A1
+        val registerIndex = instruction.and(0x0F00).shr(8)
+        val key = 0x5
+        val expectedPosition = VirtualMachine.PROGRAM_OFFSET + 2
+
+        vm.load(instruction.toShort())
+        vm.dataRegisters[registerIndex] = key
+        vm.input.setPressedKey(key)
+        interpreter.fetchAndExecuteInstruction()
+
+        assertEquals(expectedPosition, vm.memory.position(), "Incorrect memory position")
+    }
+
+    @Test
+    fun `fetch and execute instruction 0xE - type 0xA1 (key is not pressed)`() {
+        val instruction = 0xE1A1
+        val expectedPosition = VirtualMachine.PROGRAM_OFFSET + 4
+
+        vm.load(instruction.toShort())
+        interpreter.fetchAndExecuteInstruction()
+
+        assertEquals(expectedPosition, vm.memory.position(), "Incorrect memory position")
+    }
+
+    @Test
+    fun `fetch and execute instruction 0xF - type 0x07`() {
+        val instruction = 0xF107
+        val registerIndex = instruction.and(0x0F00).shr(8)
+        val delayTimerValue = 10
+
+        vm.load(instruction.toShort())
+        vm.delayTimer = delayTimerValue
+        interpreter.fetchAndExecuteInstruction()
+
+        assertEquals(delayTimerValue, vm.dataRegisters[registerIndex], "Data register value mismatch")
+    }
+
+    @Test
+    fun `fetch and execute instruction 0xF - type 0x0A`() {
+        val instruction = 0xF20A
+        val registerIndex = instruction.and(0x0F00).shr(8)
+        val key = 0x1
+
+        vm.load(instruction.toShort())
+        vm.input.setPressedKey(key)
+        interpreter.fetchAndExecuteInstruction()
+
+        assertEquals(key, vm.dataRegisters[registerIndex], "Data register value mismatch")
+    }
+
+    @Test
+    fun `fetch and execute instruction 0xF - type 0x15`() {
+        val instruction = 0xF315
+        val registerIndex = instruction.and(0x0F00).shr(8)
+        val delayTimerValue = 120
+
+        vm.load(instruction.toShort())
+        vm.dataRegisters[registerIndex] = delayTimerValue
+        interpreter.fetchAndExecuteInstruction()
+
+        assertEquals(vm.delayTimer, delayTimerValue, "Delay timer value mismatch")
+    }
+
+    @Test
+    fun `fetch and execute instruction 0xF - type 0x18`() {
+        val instruction = 0xF418
+        val registerIndex = instruction.and(0x0F00).shr(8)
+        val soundTimerValue = 210
+
+        vm.load(instruction.toShort())
+        vm.dataRegisters[registerIndex] = soundTimerValue
+        interpreter.fetchAndExecuteInstruction()
+
+        assertEquals(vm.soundTimer, soundTimerValue, "Sound timer value mismatch")
+    }
+
+    @Test
+    fun `fetch and execute instruction 0xF - type 0x1E`() {
+        val instruction = 0xF51E
+        val registerIndex = instruction.and(0x0F00).shr(8)
+        val dataRegisterValue = 20
+        val addressRegisterValue = 40
+        val expectedValue = dataRegisterValue + addressRegisterValue
+
+        vm.load(instruction.toShort())
+        vm.dataRegisters[registerIndex] = dataRegisterValue
+        vm.addressRegister = addressRegisterValue
+        interpreter.fetchAndExecuteInstruction()
+
+        assertEquals(expectedValue, vm.addressRegister, "Address register value mismatch")
+    }
+
+    @Test
+    fun `fetch and execute instruction 0xF - type 0x29`() {
+        val instruction = 0xF129
+        val registerIndex = instruction.and(0x0F00).shr(8)
+        val character = 0xA
+
+        vm.load(instruction.toShort())
+        vm.dataRegisters[registerIndex] = character
+        interpreter.fetchAndExecuteInstruction()
+
+        assertEquals(character * Screen.FONT_CHARACTER_LENGTH, vm.addressRegister, "Address register value mismatch")
+    }
+
+    @Test
+    fun `fetch and execute instruction 0xF - type 0x33`() {
+        val instruction = 0xF133
+        val registerIndex = instruction.and(0x0F00).shr(8)
+        val dataRegisterValue = 30
+        val addressRegisterValue = 20
+
+        vm.load(instruction.toShort())
+        vm.dataRegisters[registerIndex] = dataRegisterValue
+        vm.addressRegister = addressRegisterValue
+        interpreter.fetchAndExecuteInstruction()
+
+        assertEquals((dataRegisterValue / 100).toByte(), vm.memory[vm.addressRegister], "Memory value at position [${vm.addressRegister}] mismatch")
+        assertEquals(((dataRegisterValue % 100) / 10).toByte(), vm.memory[vm.addressRegister + 1], "Memory value at position [${vm.addressRegister + 1}] mismatch")
+        assertEquals(((dataRegisterValue % 100) % 10).toByte(), vm.memory[vm.addressRegister + 2], "Memory value at position [${vm.addressRegister + 2}] mismatch")
+    }
+
+    @Test
+    fun `fetch and execute instruction 0xF - type 0x55`() {
+        val instruction = 0xF655
+        val dataRegisterIndex = instruction.and(0x0F00).shr(8)
+        val baseDataRegisterValue = 10
+        val addressRegisterValue = 50
+
+        vm.load(instruction.toShort())
+        vm.addressRegister = addressRegisterValue
+        vm.dataRegisters.forEachIndexed { i, _ -> vm.dataRegisters[i] = baseDataRegisterValue + i }
+        interpreter.fetchAndExecuteInstruction()
+
+        (0..dataRegisterIndex).forEach { i ->
+            assertEquals(vm.dataRegisters[i].toByte(), vm.memory[vm.addressRegister + i], "Incorrect memory value")
+        }
+    }
+
+    @Test
+    fun `fetch and execute instruction 0xF - type 0x65`() {
+        val instruction = 0xF765
+        val dataRegisterIndex = instruction.and(0x0F00).shr(8)
+        val baseDataRegisterValue = 20
+        val addressRegisterValue = 60
+
+        vm.load(instruction.toShort())
+        vm.addressRegister = addressRegisterValue
+        (0..dataRegisterIndex).forEach { i -> vm.memory.put(vm.addressRegister + i, (baseDataRegisterValue + i).toByte()) }
+        interpreter.fetchAndExecuteInstruction()
+
+        (0..dataRegisterIndex).forEachIndexed { i, _ ->
+            assertEquals(i + baseDataRegisterValue, vm.dataRegisters[i], "Data register [$i] value mismatch")
         }
     }
 
