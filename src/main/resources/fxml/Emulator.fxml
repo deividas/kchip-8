@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.canvas.Canvas?>
+
+<?import com.github.deividasp.kchip8.ui.Emulator?>
+<VBox xmlns:fx="http://javafx.com/fxml/"
+      fx:id="root"
+      fx:controller="com.github.deividasp.kchip8.ui.RootController">
+    <MenuBar fx:id="menuBar">
+        <menus>
+            <Menu text="File">
+                <items>
+                    <MenuItem text="Load ROM" onAction="#loadRom" />
+                </items>
+            </Menu>
+        </menus>
+    </MenuBar>
+
+    <children>
+        <Canvas fx:id="canvas" onKeyPressed="#onKeyPressed" onKeyReleased="#onKeyReleased" focusTraversable="true">
+            <width><Emulator fx:constant="WIDTH"/></width>
+            <height><Emulator fx:constant="HEIGHT"/></height>
+        </Canvas>
+    </children>
+</VBox>
