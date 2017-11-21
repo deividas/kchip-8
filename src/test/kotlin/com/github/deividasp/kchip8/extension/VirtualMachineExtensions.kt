@@ -1,6 +1,6 @@
 package com.github.deividasp.kchip8.extension
 
-import com.github.deividasp.kchip8.emulator.VirtualMachine
+import com.github.deividasp.kchip8.vm.VirtualMachine
 
 fun VirtualMachine.load(vararg instructions: Short) {
     val data = arrayListOf<Byte>()

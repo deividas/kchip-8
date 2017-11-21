@@ -1,14 +1,17 @@
 package com.github.deividasp.kchip8.interpreter
 
-import com.github.deividasp.kchip8.emulator.Screen
-import com.github.deividasp.kchip8.emulator.VirtualMachine
+import com.github.deividasp.kchip8.vm.Screen
+import com.github.deividasp.kchip8.vm.VirtualMachine
 import com.github.deividasp.kchip8.extension.load
-import com.github.deividasp.kchip8.extension.setPressedKey
+import com.github.deividasp.kchip8.extension.setKeyPressed
 import org.junit.Before
 import org.junit.Test
 import org.mockito.ArgumentMatchers
 import org.mockito.Mockito.*
 import java.util.*
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
 
 /**
@@ -322,13 +325,12 @@ class InterpreterTests {
     fun `fetch and execute instruction 0x8 - type 0x6 (carry flag set)`() {
         val instruction = 0x8016
         val targetRegisterIndex = instruction.and(0x0F00).shr(8)
-        val sourceRegisterIndex = instruction.and(0x00F0).shr(4)
-        val sourceRegisterValue = 273
+        val targetRegisterValue = 273
         val expectedFlagValue = 1
-        val expectedRegisterValue = sourceRegisterValue.shr(1)
+        val expectedRegisterValue = targetRegisterValue.shr(1)
 
         vm.load(instruction.toShort())
-        vm.dataRegisters[sourceRegisterIndex] = sourceRegisterValue
+        vm.dataRegisters[targetRegisterIndex] = targetRegisterValue
         interpreter.fetchAndExecuteInstruction()
 
         assertEquals(expectedFlagValue, vm.dataRegisters[0xF], "Carry flag not set")
@@ -339,13 +341,12 @@ class InterpreterTests {
     fun `fetch and execute instruction 0x8 - type 0x6 (carry flag not set)`() {
         val instruction = 0x8016
         val targetRegisterIndex = instruction.and(0x0F00).shr(8)
-        val sourceRegisterIndex = instruction.and(0x00F0).shr(4)
-        val sourceRegisterValue = 272
+        val targetRegisterValue = 272
         val expectedFlagValue = 0
-        val expectedRegisterValue = sourceRegisterValue.shr(1)
+        val expectedRegisterValue = targetRegisterValue.shr(1)
 
         vm.load(instruction.toShort())
-        vm.dataRegisters[sourceRegisterIndex] = sourceRegisterValue
+        vm.dataRegisters[targetRegisterIndex] = targetRegisterValue
         interpreter.fetchAndExecuteInstruction()
 
         assertEquals(expectedFlagValue, vm.dataRegisters[0xF], "Carry flag is set")
@@ -394,13 +395,12 @@ class InterpreterTests {
     fun `fetch and execute instruction 0x8 - type 0xE (carry flag set)`() {
         val instruction = 0x801E
         val targetRegisterIndex = instruction.and(0x0F00).shr(8)
-        val sourceRegisterIndex = instruction.and(0x00F0).shr(4)
-        val sourceRegisterValue = 128
+        val targetRegisterValue = 128
         val expectedFlagValue = 1
-        val expectedRegisterValue = sourceRegisterValue.shl(1)
+        val expectedRegisterValue = targetRegisterValue.shl(1)
 
         vm.load(instruction.toShort())
-        vm.dataRegisters[sourceRegisterIndex] = sourceRegisterValue
+        vm.dataRegisters[targetRegisterIndex] = targetRegisterValue
         interpreter.fetchAndExecuteInstruction()
 
         assertEquals(expectedFlagValue, vm.dataRegisters[0xF], "Carry flag not set")
@@ -411,13 +411,12 @@ class InterpreterTests {
     fun `fetch and execute instruction 0x8 - type 0xE (carry flag not set)`() {
         val instruction = 0x801E
         val targetRegisterIndex = instruction.and(0x0F00).shr(8)
-        val sourceRegisterIndex = instruction.and(0x00F0).shr(4)
-        val sourceRegisterValue = 10
+        val targetRegisterValue = 10
         val expectedFlagValue = 0
-        val expectedRegisterValue = sourceRegisterValue.shl(1)
+        val expectedRegisterValue = targetRegisterValue.shl(1)
 
         vm.load(instruction.toShort())
-        vm.dataRegisters[sourceRegisterIndex] = sourceRegisterValue
+        vm.dataRegisters[targetRegisterIndex] = targetRegisterValue
         interpreter.fetchAndExecuteInstruction()
 
         assertEquals(expectedFlagValue, vm.dataRegisters[0xF], "Carry flag is set")
@@ -569,7 +568,7 @@ class InterpreterTests {
 
         vm.load(instruction.toShort())
         vm.dataRegisters[registerIndex] = key
-        vm.input.setPressedKey(key)
+        vm.input.setKeyPressed(key, true)
         interpreter.fetchAndExecuteInstruction()
 
         assertEquals(expectedPosition, vm.memory.position(), "Incorrect memory position")
@@ -584,7 +583,7 @@ class InterpreterTests {
 
         vm.load(instruction.toShort())
         vm.dataRegisters[registerIndex] = key
-        vm.input.setPressedKey(key)
+        vm.input.setKeyPressed(key, true)
         interpreter.fetchAndExecuteInstruction()
 
         assertEquals(expectedPosition, vm.memory.position(), "Incorrect memory position")
@@ -621,7 +620,11 @@ class InterpreterTests {
         val key = 0x1
 
         vm.load(instruction.toShort())
-        vm.input.setPressedKey(key)
+
+        Executors.newSingleThreadScheduledExecutor().schedule({
+            vm.input.lastPressedKey.set(key)
+        }, VirtualMachine.EXECUTION_RATE, TimeUnit.MILLISECONDS)
+
         interpreter.fetchAndExecuteInstruction()
 
         assertEquals(key, vm.dataRegisters[registerIndex], "Data register value mismatch")

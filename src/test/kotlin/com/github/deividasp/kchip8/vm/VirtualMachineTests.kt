@@ -1,4 +1,4 @@
-package com.github.deividasp.kchip8.emulator
+package com.github.deividasp.kchip8.vm
 
 import com.github.deividasp.kchip8.extension.getResourcePath
 import com.github.deividasp.kchip8.extension.load

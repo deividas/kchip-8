@@ -1,13 +1,13 @@
 package com.github.deividasp.kchip8.extension
 
-import com.github.deividasp.kchip8.emulator.Input
-import com.github.deividasp.kchip8.emulator.Input.Companion.KEY_HEX
+import com.github.deividasp.kchip8.vm.Input
+import com.github.deividasp.kchip8.vm.Input.Companion.KEY_HEX
 
-fun Input.setPressedKey(hex: Int) {
+fun Input.setKeyPressed(hex: Int, pressed: Boolean) {
 
     KEY_HEX.forEach { k, v ->
         if (v == hex) {
-            setPressedKey(k)
+            setKeyPressed(k, pressed)
             return@forEach
         }
     }
