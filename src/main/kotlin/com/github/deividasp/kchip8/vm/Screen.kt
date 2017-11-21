@@ -1,21 +1,26 @@
-package com.github.deividasp.kchip8.emulator
+package com.github.deividasp.kchip8.vm
 
 /**
  * @author Deividas Popelskis <deividas.popelskis@gmail.com>
  */
 class Screen {
 
-    private val pixels = BooleanArray(SCREEN_WIDTH * SCREEN_HEIGHT)
+    private val pixels = BooleanArray(WIDTH * HEIGHT)
 
+    @Synchronized
     fun reset() {
         pixels.forEachIndexed { i, _ -> pixels[i] = false }
     }
 
+    @Synchronized
     fun setPixelActive(x: Int, y: Int, active: Boolean) {
-        pixels[x + y * SCREEN_WIDTH] = active
+        pixels[x + y * WIDTH] = active
     }
 
-    fun isPixelActive(x: Int, y: Int) = pixels[x + y * SCREEN_WIDTH]
+    @Synchronized
+    fun isPixelActive(x: Int, y: Int): Boolean {
+        return pixels[x + y * WIDTH]
+    }
 
     companion object {
         val FONT_DATA = arrayOf(
@@ -32,14 +37,14 @@ class Screen {
                 0xF0, 0x90, 0xF0, 0x90, 0x90, // A
                 0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
                 0xF0, 0x80, 0x80, 0x80, 0xF0, // C
-                0xE0, 0x09, 0x90, 0x90, 0xE0, // D
+                0xE0, 0x90, 0x90, 0x90, 0xE0, // D
                 0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
                 0xF0, 0x80, 0xF0, 0x80, 0x80  // F
         )
 
+        const val WIDTH = 64
+        const val HEIGHT = 32
         const val SPRITE_WIDTH = 8
-        const val SCREEN_WIDTH = 64
-        const val SCREEN_HEIGHT = 32
         const val FONT_CHARACTER_LENGTH = 5
     }
 

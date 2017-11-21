@@ -1,4 +1,4 @@
-package com.github.deividasp.kchip8.emulator
+package com.github.deividasp.kchip8.vm
 
 import java.nio.ByteBuffer
 import java.nio.file.Files
@@ -56,6 +56,7 @@ class VirtualMachine {
         const val DATA_REGISTERS = 16
         const val MEMORY_SIZE = 0x1000
         const val PROGRAM_OFFSET = 0x200
+        const val EXECUTION_RATE = 1000 / 500L
     }
 
 }

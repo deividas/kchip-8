@@ -1,7 +1,7 @@
 package com.github.deividasp.kchip8.interpreter
 
-import com.github.deividasp.kchip8.emulator.Screen
-import com.github.deividasp.kchip8.emulator.VirtualMachine
+import com.github.deividasp.kchip8.vm.Screen
+import com.github.deividasp.kchip8.vm.VirtualMachine
 import java.util.*
 
 /**
@@ -80,7 +80,7 @@ class Interpreter(private val virtualMachine: VirtualMachine) {
                 val index = operand.and(0x0F00).shr(8)
                 val value = operand.and(0x00FF)
 
-                virtualMachine.dataRegisters[index] += value
+                virtualMachine.dataRegisters[index] = (virtualMachine.dataRegisters[index] + value).and(0xFF)
             }
 
             0x8 -> {
@@ -132,8 +132,8 @@ class Interpreter(private val virtualMachine: VirtualMachine) {
                     }
 
                     0x6 -> {
-                        virtualMachine.dataRegisters[0xF] = sourceRegister.and(0x1) // carry flag
-                        virtualMachine.dataRegisters[targetRegisterIndex] = sourceRegister.shr(1)
+                        virtualMachine.dataRegisters[0xF] = targetRegister.and(0x1)
+                        virtualMachine.dataRegisters[targetRegisterIndex] = targetRegister.shr(1)
                     }
 
                     0x7 -> {
@@ -149,8 +149,8 @@ class Interpreter(private val virtualMachine: VirtualMachine) {
                     }
 
                     0xE -> {
-                        virtualMachine.dataRegisters[0xF] = sourceRegister.and(0x80).shr(7) // carry flag
-                        virtualMachine.dataRegisters[targetRegisterIndex] = sourceRegister.shl(1)
+                        virtualMachine.dataRegisters[0xF] = targetRegister.and(0x80).shr(7)
+                        virtualMachine.dataRegisters[targetRegisterIndex] = targetRegister.shl(1)
                     }
                 }
             }
@@ -175,7 +175,7 @@ class Interpreter(private val virtualMachine: VirtualMachine) {
                 val index = operand.and(0x0F00).shr(8)
                 val value = operand.and(0x00FF)
 
-                virtualMachine.dataRegisters[index] = value.and(random.nextInt(256))
+                virtualMachine.dataRegisters[index] = value.and(random.nextInt(0xFF))
             }
 
             0xD -> { // Draw a sprite
@@ -189,15 +189,15 @@ class Interpreter(private val virtualMachine: VirtualMachine) {
                 virtualMachine.dataRegisters[0xF] = 0 // collision flag
 
                 (0 until height).forEach { yOffset ->
-                    val y = baseY + yOffset
+                    val y = (baseY + yOffset) % Screen.HEIGHT
                     val pixels = virtualMachine.memory[virtualMachine.addressRegister + yOffset].toInt()
 
-                    (0 until Screen.SPRITE_WIDTH).forEach { xOffset ->
-                        val x = baseX + xOffset
+                    (0 until Screen.SPRITE_WIDTH).forEach innerLoop@ { xOffset ->
+                        val x = (baseX + xOffset) % Screen.WIDTH
                         val pixelActive = pixels.and(0x80.shr(xOffset)) > 0
 
                         if (!pixelActive)
-                            return@forEach
+                            return@innerLoop
 
                         if (virtualMachine.screen.isPixelActive(x, y))
                             virtualMachine.dataRegisters[0xF] = 1 // collision flag
@@ -214,12 +214,12 @@ class Interpreter(private val virtualMachine: VirtualMachine) {
 
                 when (type) {
                     0x9E -> {
-                        if (virtualMachine.input.getPressedKeyHex() == key)
+                        if (virtualMachine.input.isKeyPressed(key))
                             virtualMachine.memory.short // skip next instruction
                     }
 
                     0xA1 -> {
-                        if (virtualMachine.input.getPressedKeyHex() != key)
+                        if (!virtualMachine.input.isKeyPressed(key))
                             virtualMachine.memory.short // skip next instruction
                     }
                 }
@@ -235,12 +235,12 @@ class Interpreter(private val virtualMachine: VirtualMachine) {
                     }
 
                     0x0A -> {
-                        if (virtualMachine.input.getPressedKeyHex() == null) {
-                            virtualMachine.memory.position(virtualMachine.memory.position() - 2) // Repeat this instruction until a key is pressed
-                            return
-                        }
+                        virtualMachine.input.lastPressedKey.set(0)
 
-                        virtualMachine.dataRegisters[registerIndex] = virtualMachine.input.getPressedKeyHex()!!
+                        while (virtualMachine.input.lastPressedKey.get() == 0)
+                            Thread.sleep(VirtualMachine.EXECUTION_RATE)
+
+                        virtualMachine.dataRegisters[registerIndex] = virtualMachine.input.lastPressedKey.get()
                     }
 
                     0x15 -> {
